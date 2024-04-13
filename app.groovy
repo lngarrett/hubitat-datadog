@@ -272,19 +272,20 @@ def handleAttribute(attr, value, deviceType) {
             metrics << [name: attr, value: binaryValue(value, 'good'), metricType: 'gauge']
             break
         case 'contact':
-            metrics << [name: attr, value: binaryValue(value, 'closed'), metricType: 'gauge']
+            if (value != 'closed') {
+                metrics << [name: attr, value: binaryValue(value, 'closed', reverse = true), metricType: 'count']
+            }
             break
         case 'door':
-            metrics << [name: attr, value: binaryValue(value, 'closed'), metricType: 'gauge']
+            metrics << [name: attr, value: binaryValue(value, 'opened'), metricType: 'gauge']
             break
         case 'lock':
             metrics << [name: attr, value: binaryValue(value, 'locked'), metricType: 'gauge']
             break
         case 'motion':
-            if (deviceType == 'motionSensor' && value == 'active') {
+            if (value == 'active') {
                 metrics << [name: 'motion.count', value: 1, metricType: 'count']
             }
-            metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'gauge']
             break
         case 'mute':
             metrics << [name: attr, value: binaryValue(value, 'muted'), metricType: 'gauge']
