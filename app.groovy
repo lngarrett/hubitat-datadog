@@ -252,6 +252,8 @@ def handleModeEvent(evt) {
     sendMetricsToDatadog([[name: 'mode', value: mode, timestamp: timestamp]])
 }
 
+// These are currently confirmed correct for contact, humidity, level, motion, presence, and temperature. 
+// You may need to verify the value strings (e.g. open vs opened) for untested devices, but they are presumed correct.
 def handleAttribute(attr, value, deviceType) {
     def metrics = []
 
