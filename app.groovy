@@ -287,7 +287,7 @@ def handleAttribute(attr, value, deviceType) {
             break
         case 'motion':
             if (value == 'active') {
-                metrics << [name: 'motion.count', value: 1, metricType: 'count']
+                metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'count']
             }
             break
         case 'mute':
