@@ -1,9 +1,36 @@
+/*****************************************************************************************************************
+ *  Source: https://github.com/lngarrett/hubitat-datadog
+ *
+ *  Raw Source: https://raw.githubusercontent.com/lngarrett/hubitat-datadog/main/app.groovy
+ *
+ *  Forked from: https://github.com/HubitatCommunity/InfluxDB-Logger
+ *
+ *  Description: A SmartApp to log Hubitat device states to Datadog. This app is a heavily modified version of
+ *  the original InfluxDB logger.
+ *
+ *  License:
+ *   Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *   in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *   on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *   for the specific language governing permissions and limitations under the License.
+ *
+ *   Modifcation History
+ *   Date       Name            Change
+ *   2024-04-12 Logan Garrett   Initital release
+ *****************************************************************************************************************/
+
+
 definition(
     name: "Datadog Logger",
     namespace: "whiskee",
-    author: "Whiskee Bottle",
+    author: "Logan Garrett",
     description: "Log device states to Datadog",
-    category: "My Apps",
+    category: "Utiliy",
+    importUrl: "https://raw.githubusercontent.com/lngarrett/hubitat-datadog/main/app.groovy"
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -342,20 +369,22 @@ def handleAttribute(attr, value, deviceType) {
 def handleEvent(evt) {
     logger("handleEvent(): $evt.displayName ($evt.name) $evt.value", "info")
 
-    def metricName = evt.name
-    def metricValue = handleAttribute(evt.name, evt.value)
     def deviceName = evt.displayName
     def deviceId = evt.deviceId
+    def deviceType = evt.name
     long timestamp = evt?.unixTime / 1000
 
-    if (metricValue != null) {
-        sendMetricsToDatadog([[
-            name: metricName,
-            value: metricValue,
-            timestamp: timestamp,
-            deviceName: deviceName,
-            deviceId: deviceId
-        ]])
+    def metrics = handleAttribute(evt.name, evt.value, deviceType)
+    if (metrics != null) {
+        sendMetricsToDatadog(metrics.collect { metric ->
+            [
+                name: metric.name,
+                value: metric.value,
+                timestamp: timestamp,
+                deviceName: deviceName,
+                deviceId: deviceId
+            ]
+        })
     }
 }
 
@@ -379,16 +408,18 @@ def softPoll() {
                     da.attributes.each { attr ->
                         if (d.hasAttribute(attr) && d.currentState(attr)?.value != null) {
                             long timeNow = new Date().time / 1000
-                            def metricValue = handleAttribute(attr, d.currentState(attr)?.value)
-                            if (metricValue != null) {
-                                metrics << [
-                                    name: attr,
-                                    value: metricValue,
-                                    unit: d.currentState(attr)?.unit,
-                                    deviceId: d.id,
-                                    deviceName: d.displayName,
-                                    timestamp: timeNow
-                                ]
+                            def metricValues = handleAttribute(attr, d.currentState(attr)?.value, d.name)
+                            if (metricValues != null) {
+                                metrics.addAll(metricValues.collect { metric ->
+                                    [
+                                        name: metric.name,
+                                        value: metric.value,
+                                        unit: d.currentState(attr)?.unit,
+                                        deviceId: d.id,
+                                        deviceName: d.displayName,
+                                        timestamp: timeNow
+                                    ]
+                                })
                             }
                         }
                     }
@@ -401,16 +432,18 @@ def softPoll() {
             entry.value.each { attr ->
                 if (d.hasAttribute(attr) && d.currentState(attr)?.value != null) {
                     long timeNow = new Date().time / 1000
-                    def metricValue = handleAttribute(attr, d.currentState(attr)?.value)
-                    if (metricValue != null) {
-                        metrics << [
-                            name: attr,
-                            value: metricValue,
-                            unit: d.currentState(attr)?.unit,
-                            deviceId: d.id,
-                            deviceName: d.displayName,
-                            timestamp: timeNow
-                        ]
+                    def metricValues = handleAttribute(attr, d.currentState(attr)?.value, d.name)
+                    if (metricValues != null) {
+                        metrics.addAll(metricValues.collect { metric ->
+                            [
+                                name: metric.name,
+                                value: metric.value,
+                                unit: d.currentState(attr)?.unit,
+                                deviceId: d.id,
+                                deviceName: d.displayName,
+                                timestamp: timeNow
+                            ]
+                        })
                     }
                 }
             }
