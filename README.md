@@ -54,8 +54,8 @@ To obtain a Datadog API key, follow these steps:
 
 The Datadog integration app operates as follows:
 
-1. Upon installation and configuration, the app subscribes to the selected device attributes and events.
-2. At the specified soft-polling interval, the app retrieves the current state of the monitored devices and attributes.
+1. Upon installation and configuration, the app subscribes to the selected device attributes and events. Events are sent to datadog immediately.
+2. At the specified soft-polling interval, the app retrieves the current state of the monitored devices and attributes. This is a soft poll and it does not query devices. The purpose of this is to provide consistency to metrics that don't change often.
 3. The app processes the device states and transforms them into a format compatible with Datadog's API.
 4. The app sends the formatted data as metrics to Datadog using the provided API key.
 5. Datadog receives the metrics and stores them for monitoring, analysis, and visualization purposes.
