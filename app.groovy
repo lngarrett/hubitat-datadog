@@ -24,10 +24,10 @@
  *****************************************************************************************************************/
 
 definition(
-    name: 'Datadog Logger',
+    name: 'Datadog Integration',
     namespace: 'whiskee',
     author: 'Logan Garrett',
-    description: 'Log device states to Datadog',
+    description: 'Send device states to Datadog',
     category: 'Utiliy',
     importUrl: 'https://raw.githubusercontent.com/lngarrett/hubitat-datadog/main/app.groovy',
     iconUrl: '',
