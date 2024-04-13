@@ -255,6 +255,7 @@ def handleModeEvent(evt) {
 def handleAttribute(attr, value, deviceType) {
     def metrics = []
 
+
     switch (attr) {
         case 'acceleration':
             metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'gauge']
@@ -263,7 +264,7 @@ def handleAttribute(attr, value, deviceType) {
             metrics << [name: attr, value: binaryValue(value, 'off', reverse = true), metricType: 'gauge']
             break
         case 'button':
-            metrics << [name: attr, value: binaryValue(value, 'pushed', reverse = true), metricType: 'gauge']
+            metrics << [name: attr, value: binaryValue(value, 'pushed'), metricType: 'gauge']
             break
         case 'carbonMonoxide':
             metrics << [name: attr, value: binaryValue(value, 'detected'), metricType: 'gauge']
@@ -272,15 +273,15 @@ def handleAttribute(attr, value, deviceType) {
             metrics << [name: attr, value: binaryValue(value, 'good'), metricType: 'gauge']
             break
         case 'contact':
-            if (value != 'closed') {
-                metrics << [name: attr, value: binaryValue(value, 'closed', reverse = true), metricType: 'count']
+            if (value == 'open') {
+                metrics << [name: attr, value: binaryValue(value, 'open'), metricType: 'count']
             }
             break
         case 'door':
             metrics << [name: attr, value: binaryValue(value, 'opened'), metricType: 'gauge']
             break
         case 'lock':
-            metrics << [name: attr, value: binaryValue(value, 'locked'), metricType: 'gauge']
+            metrics << [name: attr, value: binaryValue(value, 'unlocked'), metricType: 'gauge']
             break
         case 'motion':
             if (value == 'active') {
