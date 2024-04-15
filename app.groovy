@@ -257,7 +257,6 @@ def handleModeEvent(evt) {
 def handleAttribute(attr, value, deviceType) {
     def metrics = []
 
-
     switch (attr) {
         case 'acceleration':
             metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'gauge']
@@ -276,7 +275,7 @@ def handleAttribute(attr, value, deviceType) {
             break
         case 'contact':
             if (value == 'open') {
-                metrics << [name: attr, value: binaryValue(value, 'open'), metricType: 'count']
+                metrics << [name: attr, value: binaryValue(value, 'open'), metricType: 'count', skipSoftpoll: true]
             }
             break
         case 'door':
@@ -287,7 +286,7 @@ def handleAttribute(attr, value, deviceType) {
             break
         case 'motion':
             if (value == 'active') {
-                metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'count']
+                metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'count', skipSoftpoll: true]
             }
             break
         case 'mute':
@@ -367,7 +366,6 @@ def handleAttribute(attr, value, deviceType) {
     return metrics
 }
 
-
 def handleEvent(evt) {
     logger("handleEvent(): $evt.displayName ($evt.name) $evt.value", 'info')
 
@@ -412,7 +410,7 @@ def softPoll() {
                             long timeNow = new Date().time / 1000
                             def metricValues = handleAttribute(attr, d.currentState(attr)?.value, d.name)
                             if (metricValues != null) {
-                                metrics.addAll(metricValues.collect { metric ->
+                                metrics.addAll(metricValues.findAll { it.skipSoftpoll != true }.collect { metric ->
                                     [
                                         name: metric.name,
                                         value: metric.value,
@@ -436,7 +434,7 @@ def softPoll() {
                     long timeNow = new Date().time / 1000
                     def metricValues = handleAttribute(attr, d.currentState(attr)?.value, d.name)
                     if (metricValues != null) {
-                        metrics.addAll(metricValues.collect { metric ->
+                        metrics.addAll(metricValues.findAll { it.skipSoftpoll != true }.collect { metric ->
                             [
                                 name: metric.name,
                                 value: metric.value,
