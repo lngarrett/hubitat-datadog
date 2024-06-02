@@ -18,9 +18,9 @@
  *   on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *   for the specific language governing permissions and limitations under the License.
  *
- *   Modifcation History
+ *   Modification History
  *   Date       Name            Change
- *   2024-04-12 Logan Garrett   Initital release
+ *   2024-04-12 Logan Garrett   Initial release
  *****************************************************************************************************************/
 
 definition(
@@ -28,7 +28,7 @@ definition(
     namespace: 'whiskee',
     author: 'Logan Garrett',
     description: 'Send device states to Datadog',
-    category: 'Utiliy',
+    category: 'Utility',
     importUrl: 'https://raw.githubusercontent.com/lngarrett/hubitat-datadog/main/app.groovy',
     iconUrl: '',
     iconX2Url: '',
@@ -180,7 +180,7 @@ def getDeviceObj(id) {
 
 def installed() {
     state.installedAt = now()
-    state.loggingLevelIDE = 5
+    state.loggingLevelIDE = 3 // Default to 'Info'
     state.metricQueue = []
     updated()
     log.info "${app.label}: Installed with settings: ${settings}"
@@ -191,10 +191,11 @@ def uninstalled() {
 }
 
 def updated() {
-    logger('updated()', 'trace')
+    state.loggingLevelIDE = (settings.configLoggingLevelIDE) ? settings.configLoggingLevelIDE.toInteger() : 3
+    log.info "${app.label}: Updated with settings: ${settings}"
+    log.debug "Current log level: ${state.loggingLevelIDE}"
 
     app.updateLabel(appName)
-    state.loggingLevelIDE = (settings.configLoggingLevelIDE) ? settings.configLoggingLevelIDE.toInteger() : 3
 
     state.deviceAttributes = []
     state.deviceAttributes << [ devices: 'accelerometers', attributes: ['acceleration']]
@@ -367,7 +368,7 @@ def handleAttribute(attr, value, deviceType) {
 }
 
 def handleEvent(evt) {
-    logger("handleEvent(): $evt.displayName ($evt.name) $evt.value", 'info')
+    logger("handleEvent(): $evt.displayName ($evt.name) $evt.value", 'debug')
 
     def deviceName = evt.displayName
     def deviceId = evt.deviceId
@@ -506,7 +507,7 @@ def handleDatadogResponse(response, data) {
     }
 }
 
-private manageSchedules() {
+def manageSchedules() {
     logger('manageSchedules()', 'trace')
 
     Random rand = new Random(now())
@@ -526,7 +527,7 @@ private manageSchedules() {
 
 }
 
-private manageSubscriptions() {
+def manageSubscriptions() {
     logger('manageSubscriptions()', 'trace')
 
     unsubscribe()
@@ -555,16 +556,34 @@ private manageSubscriptions() {
     }
 }
 
-private logger(msg, level = 'debug') {
-    if (level == 'error') {
-        log.error msg
-    } else if (level == 'warn') {
-        log.warn msg
-    } else if (level == 'info') {
-        log.info msg
-    } else if (level == 'trace') {
-        log.trace msg
-    } else {
-        log.debug msg
+final int LOG_LEVEL_NONE = 0
+final int LOG_LEVEL_ERROR = 1
+final int LOG_LEVEL_WARN = 2
+final int LOG_LEVEL_INFO = 3
+final int LOG_LEVEL_DEBUG = 4
+final int LOG_LEVEL_TRACE = 5
+
+def logger(msg, level) {
+    int currentLogLevel = state.loggingLevelIDE ?: LOG_LEVEL_INFO
+    log.debug "Logger called with level: ${level}, current log level: ${currentLogLevel}, message: ${msg}"
+
+    switch (level) {
+        case 'error':
+            if (currentLogLevel >= LOG_LEVEL_ERROR) log.error msg
+            break
+        case 'warn':
+            if (currentLogLevel >= LOG_LEVEL_WARN) log.warn msg
+            break
+        case 'info':
+            if (currentLogLevel >= LOG_LEVEL_INFO) log.info msg
+            break
+        case 'trace':
+            if (currentLogLevel >= LOG_LEVEL_TRACE) log.trace msg
+            break
+        case 'debug':
+            if (currentLogLevel >= LOG_LEVEL_DEBUG) log.debug msg
+            break
+        default:
+            log.warn "Unknown log level: ${level}, message: ${msg}"
     }
 }
