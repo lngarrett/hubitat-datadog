@@ -180,22 +180,20 @@ def getDeviceObj(id) {
 
 def installed() {
     state.installedAt = now()
-    state.loggingLevelIDE = 3 // Default to 'Info'
+    state.loggingLevelIDE = 3 // Default to 'Info' on install
     state.metricQueue = []
     updated()
-    log.info "${app.label}: Installed with settings: ${settings}"
+    logger("${app.label}: Installed with settings: ${settings}", 'info')
 }
 
 def uninstalled() {
-    log.info "${app.label}: uninstalled"
+    logger("${app.label}: uninstalled", 'info')
 }
 
 def updated() {
     state.loggingLevelIDE = (settings.configLoggingLevelIDE) ? settings.configLoggingLevelIDE.toInteger() : 3
-    log.info "${app.label}: Updated with settings: ${settings}"
-    log.debug "Current log level: ${state.loggingLevelIDE}"
-
-    app.updateLabel(appName)
+    logger("${app.label}: Updated with settings: ${settings}", 'info')
+    logger("Current log level: ${state.loggingLevelIDE}", 'info')
 
     state.deviceAttributes = []
     state.deviceAttributes << [ devices: 'accelerometers', attributes: ['acceleration']]
@@ -556,34 +554,27 @@ def manageSubscriptions() {
     }
 }
 
-final int LOG_LEVEL_NONE = 0
-final int LOG_LEVEL_ERROR = 1
-final int LOG_LEVEL_WARN = 2
-final int LOG_LEVEL_INFO = 3
-final int LOG_LEVEL_DEBUG = 4
-final int LOG_LEVEL_TRACE = 5
-
-def logger(msg, level) {
-    int currentLogLevel = state.loggingLevelIDE ?: LOG_LEVEL_INFO
-    log.debug "Logger called with level: ${level}, current log level: ${currentLogLevel}, message: ${msg}"
+def logger(String message, String level) {
+    int loggingLevel = state?.loggingLevelIDE?.toInteger()
 
     switch (level) {
         case 'error':
-            if (currentLogLevel >= LOG_LEVEL_ERROR) log.error msg
+            if (loggingLevel >= 1) log.error message
             break
         case 'warn':
-            if (currentLogLevel >= LOG_LEVEL_WARN) log.warn msg
+        case 'warning':
+            if (loggingLevel >= 2) log.warn message
             break
         case 'info':
-            if (currentLogLevel >= LOG_LEVEL_INFO) log.info msg
-            break
-        case 'trace':
-            if (currentLogLevel >= LOG_LEVEL_TRACE) log.trace msg
+            if (loggingLevel >= 3) log.info message
             break
         case 'debug':
-            if (currentLogLevel >= LOG_LEVEL_DEBUG) log.debug msg
+            if (loggingLevel >= 4) log.debug message
+            break
+        case 'trace':
+            if (loggingLevel >= 5) log.trace message
             break
         default:
-            log.warn "Unknown log level: ${level}, message: ${msg}"
+            log.warn "Unknown log level: $level. Message: $message"
     }
 }
