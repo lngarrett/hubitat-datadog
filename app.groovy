@@ -21,6 +21,7 @@
  *   Modification History
  *   Date       Name            Change
  *   2024-04-12 Logan Garrett   Initial release
+ *   2024-06-02 Logan Garrett   Add support for logging events to Datadog
  *****************************************************************************************************************/
 
 definition(
