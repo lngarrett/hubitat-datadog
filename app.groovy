@@ -21,7 +21,7 @@
  *   Modification History
  *   Date       Name            Change
  *   2024-04-12 Logan Garrett   Initial release
- *   2024-06-02 Logan Garrett   Add support for logging events to Datadog
+ *   2024-06-02 Logan Garrett   Add support for logging events to Datadog. Add true support for counters.
  *****************************************************************************************************************/
 
 definition(
@@ -256,126 +256,34 @@ def handleModeEvent(evt) {
 
 // These are currently confirmed correct for contact, humidity, level, motion, presence, and temperature. 
 // You may need to verify the value strings (e.g. open vs opened) for untested devices, but they are presumed correct.
-def handleAttribute(attr, value, deviceType) {
+def handleAttribute(attr, value, unit) {
     def metrics = []
 
-    switch (attr) {
-        case 'acceleration':
-            metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'gauge']
-            break
-        case 'alarm':
-            metrics << [name: attr, value: binaryValue(value, 'off', reverse = true), metricType: 'gauge']
-            break
-        case 'button':
-            metrics << [name: attr, value: binaryValue(value, 'pushed'), metricType: 'gauge']
-            break
-        case 'carbonMonoxide':
-            metrics << [name: attr, value: binaryValue(value, 'detected'), metricType: 'gauge']
-            break
-        case 'consumableStatus':
-            metrics << [name: attr, value: binaryValue(value, 'good'), metricType: 'gauge']
-            break
-        case 'contact':
-            if (value == 'open') {
-                metrics << [name: attr, value: binaryValue(value, 'open'), metricType: 'count', skipSoftpoll: true]
-            }
-            break
-        case 'door':
-            metrics << [name: attr, value: binaryValue(value, 'opened'), metricType: 'gauge']
-            break
-        case 'lock':
-            metrics << [name: attr, value: binaryValue(value, 'unlocked'), metricType: 'gauge']
-            break
-        case 'motion':
-            if (value == 'active') {
-                metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'count', skipSoftpoll: true]
-            }
-            break
-        case 'mute':
-            metrics << [name: attr, value: binaryValue(value, 'muted'), metricType: 'gauge']
-            break
-        case 'presence':
-            metrics << [name: attr, value: binaryValue(value, 'present'), metricType: 'gauge']
-            break
-        case 'shock':
-            metrics << [name: attr, value: binaryValue(value, 'detected'), metricType: 'gauge']
-            break
-        case 'sleeping':
-            metrics << [name: attr, value: binaryValue(value, 'sleeping'), metricType: 'gauge']
-            break
-        case 'smoke':
-            metrics << [name: attr, value: binaryValue(value, 'detected'), metricType: 'gauge']
-            break
-        case 'sound':
-            metrics << [name: attr, value: binaryValue(value, 'detected'), metricType: 'gauge']
-            break
-        case 'switch':
-            metrics << [name: attr, value: binaryValue(value, 'on'), metricType: 'gauge']
-            break
-        case 'tamper':
-            metrics << [name: attr, value: binaryValue(value, 'detected'), metricType: 'gauge']
-            break
-        case 'thermostatMode':
-            metrics << [name: attr, value: binaryValue(value, 'off', reverse = true), metricType: 'gauge']
-            break
-        case 'thermostatFanMode':
-            metrics << [name: attr, value: binaryValue(value, 'off', reverse = true), metricType: 'gauge']
-            break
-        case 'thermostatOperatingState':
-            metrics << [name: attr, value: binaryValue(value, 'heating'), metricType: 'gauge']
-            break
-        case 'thermostatSetpointMode':
-            metrics << [name: attr, value: binaryValue(value, 'followSchedule', reverse = true), metricType: 'gauge']
-            break
-        case 'threeAxis':
-            def valueXYZ = value.split(',')
-            metrics << [name: "${attr}.x", value: valueXYZ[0].toInteger(), metricType: 'gauge']
-            metrics << [name: "${attr}.y", value: valueXYZ[1].toInteger(), metricType: 'gauge']
-            metrics << [name: "${attr}.z", value: valueXYZ[2].toInteger(), metricType: 'gauge']
-            break
-        case 'touch':
-            metrics << [name: attr, value: binaryValue(value, 'touched'), metricType: 'gauge']
-            break
-        case 'optimisation':
-            metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'gauge']
-            break
-        case 'windowFunction':
-            metrics << [name: attr, value: binaryValue(value, 'active'), metricType: 'gauge']
-            break
-        case 'water':
-            metrics << [name: attr, value: binaryValue(value, 'wet'), metricType: 'gauge']
-            break
-        case 'valve':
-            metrics << [name: attr, value: binaryValue(value, 'open'), metricType: 'gauge']
-            break
-        case 'windowShade':
-            metrics << [name: attr, value: binaryValue(value, 'closed'), metricType: 'gauge']
-            break
-        default:
-            logger("handleAttribute(): String value not explicitly handled: Attribute: ${attr}, Value: ${value}", 'warn')
-            if (value ==~ /.*[^0-9\.,-].*/) {
-                return null
-            } else {
-                try {
-                    metrics << [name: attr, value: Float.parseFloat(value), metricType: 'gauge']
-                } catch (e) {
-                    logger("handleAttribute(): Cannot convert ${value} to float. Skipping.", 'warn')
-                    return null
-                }
-            }
+    if (unit) {
+        // If unit is present, treat it as a gauge
+        try {
+            logger("Attr: ${attr} Value: ${value} being handled as gauge", 'debug')
+            metrics << [name: attr, value: Float.parseFloat(value), metricType: 'gauge']
+        } catch (e) {
+            logger("handleAttribute(): Cannot convert ${value} to float. Skipping.", 'warn')
+            return null
+        }
+    } else {
+        // If unit is not present, treat it as a count and tag with the value
+        logger("Attr: ${attr} Value: ${value} being handled as count", 'debug')
+        metrics << [name: attr, value: 1, metricType: 'count', tags: ["value:${value}"]]
     }
 
     return metrics
 }
 
 def handleEvent(evt) {
-
     def deviceName = evt.displayName
     def deviceId = evt.deviceId
     def deviceType = evt.name
     long timestamp = evt?.unixTime / 1000
 
-    def metrics = handleAttribute(evt.name, evt.value, deviceType)
+    def metrics = handleAttribute(evt.name, evt.value, evt.unit)
     if (metrics != null) {
         sendMetricsToDatadog(metrics.collect { metric ->
             [
@@ -383,7 +291,9 @@ def handleEvent(evt) {
                 value: metric.value,
                 timestamp: timestamp,
                 deviceName: deviceName,
-                deviceId: deviceId
+                deviceId: deviceId,
+                metricType: metric.metricType,
+                tags: metric.tags
             ]
         })
     }
@@ -391,7 +301,6 @@ def handleEvent(evt) {
     // Send the full event as a log to Datadog
     sendLogToDatadog(evt)
 }
-
 def binaryValue(value, active, reverse=false) {
     return reverse ? (value == active ? 0 : 1) : (value == active ? 1 : 0)
 }
@@ -411,19 +320,23 @@ def softPoll() {
                 devs.each { d ->
                     da.attributes.each { attr ->
                         if (d.hasAttribute(attr) && d.currentState(attr)?.value != null) {
-                            long timeNow = new Date().time / 1000
-                            def metricValues = handleAttribute(attr, d.currentState(attr)?.value, d.name)
-                            if (metricValues != null) {
-                                metrics.addAll(metricValues.findAll { it.skipSoftpoll != true }.collect { metric ->
-                                    [
-                                        name: metric.name,
-                                        value: metric.value,
-                                        unit: d.currentState(attr)?.unit,
-                                        deviceId: d.id,
-                                        deviceName: d.displayName,
-                                        timestamp: timeNow
-                                    ]
-                                })
+                            def unit = d.currentState(attr)?.unit
+                            if (unit) {
+                                // Only include gauges (attributes with units) in softpoll
+                                long timeNow = new Date().time / 1000
+                                def metricValues = handleAttribute(attr, d.currentState(attr)?.value, unit)
+                                if (metricValues != null) {
+                                    metrics.addAll(metricValues.collect { metric ->
+                                        [
+                                            name: metric.name,
+                                            value: metric.value,
+                                            deviceId: d.id,
+                                            deviceName: d.displayName,
+                                            timestamp: timeNow,
+                                            metricType: metric.metricType
+                                        ]
+                                    })
+                                }
                             }
                         }
                     }
@@ -435,19 +348,23 @@ def softPoll() {
             d = getDeviceObj(entry.key)
             entry.value.each { attr ->
                 if (d.hasAttribute(attr) && d.currentState(attr)?.value != null) {
-                    long timeNow = new Date().time / 1000
-                    def metricValues = handleAttribute(attr, d.currentState(attr)?.value, d.name)
-                    if (metricValues != null) {
-                        metrics.addAll(metricValues.findAll { it.skipSoftpoll != true }.collect { metric ->
-                            [
-                                name: metric.name,
-                                value: metric.value,
-                                unit: d.currentState(attr)?.unit,
-                                deviceId: d.id,
-                                deviceName: d.displayName,
-                                timestamp: timeNow
-                            ]
-                        })
+                    def unit = d.currentState(attr)?.unit
+                    if (unit) {
+                        // Only include gauges (attributes with units) in softpoll
+                        long timeNow = new Date().time / 1000
+                        def metricValues = handleAttribute(attr, d.currentState(attr)?.value, unit)
+                        if (metricValues != null) {
+                            metrics.addAll(metricValues.collect { metric ->
+                                [
+                                    name: metric.name,
+                                    value: metric.value,
+                                    deviceId: d.id,
+                                    deviceName: d.displayName,
+                                    timestamp: timeNow,
+                                    metricType: metric.metricType
+                                ]
+                            })
+                        }
                     }
                 }
             }
@@ -472,12 +389,12 @@ def sendMetricsToDatadog(metrics) {
     def series = metrics.collect { metric ->
         [
             'metric': "hubitat.${metric.name}",
-            'type': 'gauge',
+            'type': metric.metricType,
             'host': 'hubitat',
             'points': [
                 [metric.timestamp, metric.value]
             ],
-            'tags': ["devicename:${metric.deviceName}", "deviceid:${metric.deviceId}"]
+            'tags': ["devicename:${metric.deviceName}", "deviceid:${metric.deviceId}"] + (metric.tags ?: [])
         ]
     }
 
