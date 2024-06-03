@@ -93,7 +93,9 @@ def setupMain() {
                 input 'alarms', 'capability.alarm', title: 'Alarms', multiple: true, required: false
                 input 'batteries', 'capability.battery', title: 'Batteries', multiple: true, required: false
                 input 'beacons', 'capability.beacon', title: 'Beacons', multiple: true, required: false
-                input 'buttons', 'capability.button', title: 'Buttons', multiple: true, required: false
+                input 'buttons', 'capability.pushableButton', title: 'Pushable Buttons', multiple: true, required: false
+                input 'holdableButtons', 'capability.holdableButton', title: 'Holdable Buttons', multiple: true, required: false
+                input 'releasableButtons', 'capability.releasableButton', title: 'Releasable Buttons', multiple: true, required: false
                 input 'cos', 'capability.carbonMonoxideDetector', title: 'Carbon Monoxide Detectors', multiple: true, required: false
                 input 'co2s', 'capability.carbonDioxideMeasurement', title: 'Carbon Dioxide Detectors', multiple: true, required: false
                 input 'colors', 'capability.colorControl', title: 'Color Controllers', multiple: true, required: false
@@ -201,7 +203,7 @@ def updated() {
     state.deviceAttributes << [ devices: 'alarms', attributes: ['alarm']]
     state.deviceAttributes << [ devices: 'batteries', attributes: ['battery']]
     state.deviceAttributes << [ devices: 'beacons', attributes: ['presence']]
-    state.deviceAttributes << [ devices: 'buttons', attributes: ['button']]
+    state.deviceAttributes << [ devices: 'buttons', attributes: ['pushed', 'held', 'released', 'doubleTapped']]
     state.deviceAttributes << [ devices: 'cos', attributes: ['carbonMonoxide']]
     state.deviceAttributes << [ devices: 'co2s', attributes: ['carbonDioxide']]
     state.deviceAttributes << [ devices: 'colors', attributes: ['hue', 'saturation', 'color']]
@@ -350,8 +352,8 @@ def handleAttribute(attr, value, deviceType) {
             metrics << [name: attr, value: binaryValue(value, 'closed'), metricType: 'gauge']
             break
         default:
+            logger("handleAttribute(): String value not explicitly handled: Attribute: ${attr}, Value: ${value}", 'warn')
             if (value ==~ /.*[^0-9\.,-].*/) {
-                logger("handleAttribute(): String value not explicitly handled: Attribute: ${attr}, Value: ${value}", 'warn')
                 return null
             } else {
                 try {
