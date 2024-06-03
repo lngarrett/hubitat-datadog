@@ -366,7 +366,6 @@ def handleAttribute(attr, value, deviceType) {
 }
 
 def handleEvent(evt) {
-    logger("handleEvent(): $evt.displayName ($evt.name) $evt.value", 'debug')
 
     def deviceName = evt.displayName
     def deviceId = evt.deviceId
@@ -385,6 +384,9 @@ def handleEvent(evt) {
             ]
         })
     }
+
+    // Send the full event as a log to Datadog
+    sendLogToDatadog(evt)
 }
 
 def binaryValue(value, active, reverse=false) {
@@ -576,5 +578,83 @@ def logger(String message, String level) {
             break
         default:
             log.warn "Unknown log level: $level. Message: $message"
+    }
+}
+
+
+def getEventDetails(evt) {
+    return [
+        "archivable": evt.archivable,
+        "descriptionText": evt.descriptionText,
+        "displayed": evt.displayed,
+        "source": evt.source,
+        "isStateChange": evt.isStateChange,
+        "name": evt.name,
+        "value": evt.value,
+        "unit": evt.unit,
+        "description": evt.description,
+        "translatable": evt.translatable,
+        "type": evt.type,
+        "locationId": evt.locationId,
+        "hubId": evt.hubId,
+        "installedAppId": evt.installedAppId,
+        // "data": evt.getData(),
+        // "jsonData": evt.getJsonData(),
+        "isPhysical": evt.isPhysical(),
+        "isDigital": evt.isDigital(),
+        // "date": evt.getDate(),
+        // "unixTime": evt.getUnixTime(),
+        "displayName": evt.getDisplayName(),
+        // "deviceId": evt.getDeviceId(),
+        // "device": evt.getDevice(),
+        // "location": evt.getLocation(),
+        // "doubleValue": evt.getDoubleValue(),
+        // "floatValue": evt.getFloatValue(),
+        // "dateValue": evt.getDateValue(),
+        // "integerValue": evt.getIntegerValue(),
+        // "longValue": evt.getLongValue(),
+        // "numberValue": evt.getNumberValue(),
+        // "numericValue": evt.getNumericValue()
+    ]
+}
+
+def sendLogToDatadog(evt) {
+    if (prefApiKey == null) {
+        log.error 'Datadog API key not set. Cannot send logs.'
+        return
+    }
+
+    def eventDetails = getEventDetails(evt)
+    def deviceId = evt.getDeviceId()
+    
+    def logEntry = [
+        "ddsource": "hubitat",
+        "ddtags": "event",
+        "hostname": "hubitat",
+        "device_id": deviceId,
+        "eventDetails": eventDetails
+    ]
+    
+    def url = "https://http-intake.logs.datadoghq.com/v1/input/${prefApiKey}"
+    def requestBody = groovy.json.JsonOutput.toJson(logEntry)
+
+    try {
+        def postParams = [
+            uri: url,
+            requestContentType: 'application/json',
+            contentType: 'application/json',
+            body: requestBody
+        ]
+        asynchttpPost('handleDatadogLogResponse', postParams)
+    } catch (e) {
+        log.error "sendLogToDatadog(): Request failed: ${e}"
+    }
+}
+
+def handleDatadogLogResponse(response, data) {
+    if (response.status != 200) {
+        log.error "handleDatadogLogResponse(): Request failed with status ${response.status}"
+    } else {
+        log.debug 'handleDatadogLogResponse(): Log sent successfully'
     }
 }
